@@ -1,70 +1,100 @@
-name: "template"
-
+name: "aws-iam-role"
 # Canonical GitHub repo
-github_repo: "cloudposse-terraform-components/template"
-
+github_repo: "cloudposse-terraform-components/aws-iam-role"
 # Short description of this project
 description: |-
-  Description of this component
+  This component is responsible for provisioning simple IAM roles. If a more complicated IAM role and policy are desired
+  then it is better to use a separate component specific to that role.
 
-usage: |-
-  **Stack Level**: Regional or Test47
+  ## Usage
 
-  Here's an example snippet for how to use this component.
-  
+  **Stack Level**: Global
+
+  Abstract
+
   ```yaml
+  # stacks/catalog/iam-role.yaml
   components:
     terraform:
-      foo:
+      iam-role/defaults:
+        metadata:
+          type: abstract
+          component: iam-role
+        settings:
+          spacelift:
+            workspace_enabled: true
         vars:
           enabled: true
   ```
 
+  Use-case: An IAM role for AWS Workspaces Directory since this service does not have a service linked role.
+
+  ```yaml
+  # stacks/catalog/aws-workspaces/directory/iam-role.yaml
+  import:
+    - catalog/iam-role
+
+  components:
+    terraform:
+      aws-workspaces/directory/iam-role:
+        metadata:
+          component: iam-role
+          inherits:
+            - iam-role/defaults
+        vars:
+          name: workspaces_DefaultRole
+          # Added _ here to allow the _ character
+          regex_replace_chars: /[^a-zA-Z0-9-_]/
+          # Keep the current name casing
+          label_value_case: none
+          # Use the "name" without the other context inputs i.e. namespace, tenant, environment, attributes
+          use_fullname: false
+          role_description: |
+            Used with AWS Workspaces Directory. The name of the role does not match the normal naming convention because this name is a requirement to work with the service. This role has to be used until AWS provides the respective service linked role.
+          principals:
+            Service:
+              - workspaces.amazonaws.com
+          # This will prevent the creation of a managed IAM policy
+          policy_document_count: 0
+          managed_policy_arns:
+            - arn:aws:iam::aws:policy/AmazonWorkSpacesServiceAccess
+            - arn:aws:iam::aws:policy/AmazonWorkSpacesSelfServiceAccess
+  ```
+
+  <!-- prettier-ignore-start -->
+
+  <!-- prettier-ignore-end -->
+
+  ## References
+
+  - [cloudposse/terraform-aws-components](https://github.com/cloudposse/terraform-aws-components/tree/main/modules/iam-role) -
+    Cloud Posse's upstream component
 include:
   - "docs/terraform.md"
-
 tags:
-  - terraform
-  - terraform-modules
-  - aws
-  - components
-  - terraform-components
-  - root
-  - geodesic
-  - reference-implementation
-  - reference-architecture
-
+  - component/iam-role
+  - layer/addons
+  - provider/aws
 # Categories of this project
 categories:
-  - terraform-modules/root
-  - terraform-components
-
+  - component/iam-role
+  - layer/addons
+  - provider/aws
 # License of this project
 license: "APACHE2"
-
 # Badges to display
 badges:
-  - name: "Latest Release"
-    image: "https://img.shields.io/github/release/cloudposse-terraform-components/template.svg?style=for-the-badge"
-    url: "https://github.com/cloudposse-terraform-components/template/releases/latest"
-  - name: "Slack Community"
-    image: "https://slack.cloudposse.com/for-the-badge.svg"
-    url: "https://slack.cloudposse.com"
-
-references:
-  - name: "Cloud Posse Documentation"
-    description: "Complete documentation for the Cloud Posse solution"
-    url: "https://docs.cloudposse.com"
-  - name: "Reference Architectures"
-    description: "Launch effortlessly with our turnkey reference architectures, built either by your team or ours."
-    url: "https://cloudposse.com/"
-
+  - name: Latest Release
+    image: https://img.shields.io/github/release/cloudposse-terraform-components/aws-iam-role.svg?style=for-the-badge
+    url: https://github.com/cloudposse-terraform-components/aws-iam-role/releases/latest
+  - name: Slack Community
+    image: https://slack.cloudposse.com/for-the-badge.svg
+    url: https://slack.cloudposse.com
 related:
-- name: "Cloud Posse Terraform Modules"
-  description: Our collection of reusable Terraform modules used by our reference architectures.
-  url: "https://docs.cloudposse.com/modules/"
-- name: "Atmos"
-  description: "Atmos is like docker-compose but for your infrastructure"
-  url: "https://atmos.tools"
-
+  - name: "Cloud Posse Terraform Modules"
+    description: Our collection of reusable Terraform modules used by our reference architectures.
+    url: "https://docs.cloudposse.com/modules/"
+  - name: "Atmos"
+    description: "Atmos is like docker-compose but for your infrastructure"
+    url: "https://atmos.tools"
 contributors: [] # If included generates contribs
