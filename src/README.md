@@ -5,7 +5,7 @@ tags:
   - provider/aws
 ---
 
-# Component: `iam`
+# Component: `iam-role`
 
 This component is responsible for provisioning simple IAM roles. If a more complicated IAM role and policy are desired
 then it is better to use a separate component specific to that role.
