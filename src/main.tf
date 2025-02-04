@@ -4,7 +4,7 @@ locals {
 
 module "role" {
   source  = "cloudposse/iam-role/aws"
-  version = "0.17.0"
+  version = "0.21.0"
 
   assume_role_actions      = var.assume_role_actions
   assume_role_conditions   = var.assume_role_conditions
