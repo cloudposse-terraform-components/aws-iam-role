@@ -1,9 +1,10 @@
 components:
   terraform:
-    iam-role/basic:
+    iam-role/disabled:
       metadata:
         component: target
       vars:
+        enabled: false
         name: role
         # Added _ here to allow the _ character
         regex_replace_chars: /[^a-zA-Z0-9-_]/
