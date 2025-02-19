@@ -1,0 +1,52 @@
+components:
+  terraform:
+    iam-role/basic:
+      metadata:
+        component: target
+      vars:
+        name: role
+        # Added _ here to allow the _ character
+        regex_replace_chars: /[^a-zA-Z0-9-_]/
+        # Keep the current name casing
+        label_value_case: none
+        # Use the "name" without the other context inputs i.e. namespace, tenant, environment, attributes
+        use_fullname: true
+        role_description: |
+          Used with AWS Workspaces Directory.
+        principals:
+          Service:
+            - workspaces.amazonaws.com
+        # This will prevent the creation of a managed IAM policy
+        policy_document_count: 1
+        managed_policy_arns:
+          - arn:aws:iam::aws:policy/AmazonWorkSpacesServiceAccess
+          - arn:aws:iam::aws:policy/AmazonWorkSpacesSelfServiceAccess
+        policy_documents:
+          - |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "s3:*",
+                  "Resource": "*"
+                }
+              ]
+            }
+        max_session_duration: 3600
+        permissions_boundary: "arn:aws:iam::aws:policy/PowerUserAccess"
+        policy_name: role-policy
+        policy_description: "IAM policy for AWS Workspaces Directory role with access to WorkSpaces service and self-service capabilities"
+        assume_role_actions:
+          - "sts:AssumeRole"
+          - "sts:SetSourceIdentity"
+          - "sts:TagSession"
+        assume_role_conditions:
+          - test: "StringLike"
+            variable: "aws:RequestTag/Environment"
+            values:
+              - "prod"
+              - "staging"
+        instance_profile_enabled: true
+        path: "/"
+        tags_enabled: true
