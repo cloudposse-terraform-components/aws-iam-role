@@ -3,8 +3,10 @@ locals {
 }
 
 module "role" {
-  source  = "cloudposse/iam-role/aws"
-  version = "0.17.0"
+  # Temporally changing the branch until https://github.com/cloudposse/terraform-aws-iam-role/pull/85 is merged
+  #source  = "cloudposse/iam-role/aws"
+  #version = "0.17.0"
+  source  = "git::https://github.com/pablotp/terraform-aws-iam-role.git?ref=split-assume-conditions"
 
   assume_role_actions      = var.assume_role_actions
   assume_role_conditions   = var.assume_role_conditions
@@ -19,7 +21,6 @@ module "role" {
   policy_name              = var.policy_name
   principals               = var.principals
   role_description         = var.role_description
-  tags_enabled             = var.tags_enabled
   use_fullname             = var.use_fullname
 
   context = module.this.context
