@@ -17,13 +17,13 @@ import (
 )
 
 type AssumeRolePolicyDocument struct {
-    Statement []struct {
-        Principal struct {
-            Service string `json:"Service"`
-        } `json:"Principal"`
-        Action    []string                       `json:"Action"`
-        Condition map[string]map[string][]string `json:"Condition"`
-    } `json:"Statement"`
+	Statement []struct {
+		Principal struct {
+			Service string `json:"Service"`
+		} `json:"Principal"`
+		Action    []string                       `json:"Action"`
+		Condition map[string]map[string][]string `json:"Condition"`
+	} `json:"Statement"`
 }
 
 type ComponentSuite struct {
@@ -133,6 +133,88 @@ func (s *ComponentSuite) TestEnabledFlag() {
 	const awsRegion = "us-east-2"
 
 	s.VerifyEnabledFlag(component, stack, nil)
+}
+
+func (s *ComponentSuite) TestAssumeRolePolicy() {
+	const component = "iam-role/assume-role-policy"
+	const stack = "default-test"
+	const awsRegion = "us-east-2"
+
+	policyNameSuffix := strings.ToLower(random.UniqueId())
+	policyName := "assume-role-policy-test-" + policyNameSuffix
+
+	inputs := map[string]interface{}{
+		"policy_name": policyName,
+	}
+
+	defer s.DestroyAtmosComponent(s.T(), component, stack, &inputs)
+	options, _ := s.DeployAtmosComponent(s.T(), component, stack, &inputs)
+	assert.NotNil(s.T(), options)
+
+	role := map[string]interface{}{}
+	atmos.OutputStruct(s.T(), options, "role", &role)
+
+	arn := role["arn"].(string)
+	assert.NotEmpty(s.T(), arn)
+	assert.Contains(s.T(), arn, "arn:aws:iam::")
+
+	name := role["name"].(string)
+	assert.NotEmpty(s.T(), name)
+	assert.True(s.T(), strings.HasPrefix(name, "eg-default-ue2-test-assume-role-policy-role"))
+
+	client := aws.NewIamClient(s.T(), awsRegion)
+	describeRoleOutput, err := client.GetRole(context.Background(), &iam.GetRoleInput{
+		RoleName: &name,
+	})
+	assert.NoError(s.T(), err)
+
+	awsRole := describeRoleOutput.Role
+	assert.Equal(s.T(), name, *awsRole.RoleName)
+	assert.Equal(s.T(), "Used for testing assume_role_policy override.\n", *awsRole.Description)
+
+	assumeRolePolicyDocument, err := url.QueryUnescape(*awsRole.AssumeRolePolicyDocument)
+	assert.NoError(s.T(), err)
+
+	var assumePolicyDoc struct {
+		Statement []struct {
+			Principal struct {
+				Service string `json:"Service"`
+			} `json:"Principal"`
+			Action interface{} `json:"Action"`
+		} `json:"Statement"`
+	}
+	err = json.Unmarshal([]byte(assumeRolePolicyDocument), &assumePolicyDoc)
+	assert.NoError(s.T(), err)
+
+	assert.Equal(s.T(), "ec2.amazonaws.com", assumePolicyDoc.Statement[0].Principal.Service)
+	// Action can be string or []string, so handle both
+	switch v := assumePolicyDoc.Statement[0].Action.(type) {
+	case string:
+		assert.Equal(s.T(), "sts:AssumeRole", v)
+	case []interface{}:
+		assert.Equal(s.T(), 1, len(v))
+		assert.Equal(s.T(), "sts:AssumeRole", v[0])
+	default:
+		assert.Fail(s.T(), "unexpected type for Action")
+	}
+
+	attachedPolicies, err := client.ListAttachedRolePolicies(context.Background(), &iam.ListAttachedRolePoliciesInput{
+		RoleName: &name,
+	})
+	assert.NoError(s.T(), err)
+
+	expectedPolicies := []string{
+		"arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess",
+	}
+
+	var actualPolicies []string
+	for _, policy := range attachedPolicies.AttachedPolicies {
+		actualPolicies = append(actualPolicies, *policy.PolicyArn)
+	}
+
+	assert.Subset(s.T(), actualPolicies, expectedPolicies)
+
+	s.DriftTest(component, stack, &inputs)
 }
 
 func TestRunSuite(t *testing.T) {

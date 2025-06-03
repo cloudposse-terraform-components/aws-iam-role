@@ -1,0 +1,30 @@
+components:
+  terraform:
+    iam-role/assume-role-policy:
+      metadata:
+        component: target
+      vars:
+        name: assume-role-policy-role
+        use_fullname: true
+        role_description: |
+          Used for testing assume_role_policy override.
+        assume_role_policy: |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {"Service": "ec2.amazonaws.com"},
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          }
+        policy_document_count: 0
+        managed_policy_arns:
+          - arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
+        max_session_duration: 3600
+        permissions_boundary: "arn:aws:iam::aws:policy/PowerUserAccess"
+        policy_name: assume-role-policy-test
+        policy_description: "IAM policy for testing assume_role_policy override."
+        instance_profile_enabled: false
+        path: "/" 

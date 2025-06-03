@@ -50,4 +50,3 @@ components:
               - "staging"
         instance_profile_enabled: true
         path: "/"
-        tags_enabled: true
