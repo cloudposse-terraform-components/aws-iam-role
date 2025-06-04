@@ -19,7 +19,6 @@ module "role" {
   policy_name              = var.policy_name
   principals               = var.principals
   role_description         = var.role_description
-  tags_enabled             = var.tags_enabled
   use_fullname             = var.use_fullname
 
   context = module.this.context
