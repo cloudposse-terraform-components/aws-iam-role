@@ -93,8 +93,8 @@ variable "path" {
   default     = "/"
 }
 
-variable "tags_enabled" {
+variable "assume_role_policy" {
   type        = string
-  description = "Enable/disable tags on IAM roles and policies"
-  default     = true
+  description = "A JSON assume role policy document. If set, this will be used as the assume role policy and the principals, assume_role_conditions, and assume_role_actions variables will be ignored."
+  default     = null
 }
