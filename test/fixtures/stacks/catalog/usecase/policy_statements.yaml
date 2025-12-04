@@ -13,8 +13,7 @@ components:
             - lambda.amazonaws.com
         # Use policy_statements instead of policy_documents
         # This tests the YAML-friendly policy definition feature
-        # Note: All map entries must have consistent attributes for Terraform type conversion
-        # Optional fields should be set to null explicitly when not all entries use them
+        # Note: Conditions are tested separately - this focuses on basic policy_statements
         policy_statements:
           AllowS3Read:
             effect: Allow
@@ -24,7 +23,6 @@ components:
             resources:
               - "arn:aws:s3:::test-bucket"
               - "arn:aws:s3:::test-bucket/*"
-            condition: null
           AllowDynamoDBAccess:
             effect: Allow
             actions:
@@ -33,9 +31,6 @@ components:
               - "dynamodb:Query"
             resources:
               - "arn:aws:dynamodb:*:*:table/test-table"
-            condition:
-              StringEquals:
-                "aws:RequestTag/Environment": "test"
           DenyDeleteOperations:
             effect: Deny
             actions:
@@ -43,7 +38,6 @@ components:
               - "dynamodb:DeleteItem"
             resources:
               - "*"
-            condition: null
         # Do not set policy_document_count - let the component auto-calculate
         managed_policy_arns:
           - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole

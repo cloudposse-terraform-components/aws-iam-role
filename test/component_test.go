@@ -262,6 +262,7 @@ func (s *ComponentSuite) TestGitHubOidc() {
 	assert.NoError(s.T(), err)
 
 	// Parse the assume role policy to verify GitHub OIDC configuration
+	// Note: Condition values can be either string or []string, so we use interface{}
 	var assumePolicyDoc struct {
 		Statement []struct {
 			Sid       string `json:"Sid"`
@@ -269,8 +270,8 @@ func (s *ComponentSuite) TestGitHubOidc() {
 			Principal struct {
 				Federated string `json:"Federated"`
 			} `json:"Principal"`
-			Action    interface{}                    `json:"Action"`
-			Condition map[string]map[string][]string `json:"Condition"`
+			Action    interface{}                      `json:"Action"`
+			Condition map[string]map[string]interface{} `json:"Condition"`
 		} `json:"Statement"`
 	}
 	err = json.Unmarshal([]byte(assumeRolePolicyDocument), &assumePolicyDoc)
@@ -283,8 +284,8 @@ func (s *ComponentSuite) TestGitHubOidc() {
 		Principal struct {
 			Federated string `json:"Federated"`
 		} `json:"Principal"`
-		Action    interface{}                    `json:"Action"`
-		Condition map[string]map[string][]string `json:"Condition"`
+		Action    interface{}                      `json:"Action"`
+		Condition map[string]map[string]interface{} `json:"Condition"`
 	}
 	for i := range assumePolicyDoc.Statement {
 		if assumePolicyDoc.Statement[i].Sid == "OidcProviderAssume" {
@@ -301,14 +302,32 @@ func (s *ComponentSuite) TestGitHubOidc() {
 	assert.NotNil(s.T(), oidcStatement.Condition)
 	assert.Contains(s.T(), oidcStatement.Condition, "StringEquals")
 	assert.Contains(s.T(), oidcStatement.Condition["StringEquals"], "token.actions.githubusercontent.com:aud")
-	assert.Contains(s.T(), oidcStatement.Condition["StringEquals"]["token.actions.githubusercontent.com:aud"], "sts.amazonaws.com")
+	// Audience can be string or []string
+	audValue := oidcStatement.Condition["StringEquals"]["token.actions.githubusercontent.com:aud"]
+	switch v := audValue.(type) {
+	case string:
+		assert.Equal(s.T(), "sts.amazonaws.com", v)
+	case []interface{}:
+		assert.Contains(s.T(), v, "sts.amazonaws.com")
+	default:
+		assert.Fail(s.T(), "unexpected type for audience condition")
+	}
 
 	// Verify the condition includes the subject (repo) check
 	assert.Contains(s.T(), oidcStatement.Condition, "StringLike")
 	assert.Contains(s.T(), oidcStatement.Condition["StringLike"], "token.actions.githubusercontent.com:sub")
 
 	// Verify the trusted repos are correctly formatted
-	subValues := oidcStatement.Condition["StringLike"]["token.actions.githubusercontent.com:sub"]
+	subValue := oidcStatement.Condition["StringLike"]["token.actions.githubusercontent.com:sub"]
+	var subValues []string
+	switch v := subValue.(type) {
+	case string:
+		subValues = []string{v}
+	case []interface{}:
+		for _, s := range v {
+			subValues = append(subValues, s.(string))
+		}
+	}
 	assert.Contains(s.T(), subValues, "repo:cloudposse/test-repo:*")
 	assert.Contains(s.T(), subValues, "repo:cloudposse/infrastructure:ref:refs/heads/main")
 	assert.Contains(s.T(), subValues, "repo:other-org/other-repo:ref:refs/heads/release/*")
@@ -381,42 +400,41 @@ func (s *ComponentSuite) TestPolicyStatements() {
 
 	assert.Equal(s.T(), "lambda.amazonaws.com", assumePolicyDoc.Statement[0].Principal.Service)
 
-	// Verify attached policies include Lambda basic execution role
+	// Verify attached policies include Lambda basic execution role and the custom policy
 	attachedPolicies, err := client.ListAttachedRolePolicies(context.Background(), &iam.ListAttachedRolePoliciesInput{
 		RoleName: &name,
 	})
 	assert.NoError(s.T(), err)
 
-	expectedManagedPolicies := []string{
-		"arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
-	}
-
+	// Check that the Lambda basic execution role is attached
 	var actualManagedPolicies []string
+	var customPolicyArn string
 	for _, policy := range attachedPolicies.AttachedPolicies {
 		actualManagedPolicies = append(actualManagedPolicies, *policy.PolicyArn)
+		// Find the custom policy created from policy_statements
+		if strings.Contains(*policy.PolicyArn, policyName) {
+			customPolicyArn = *policy.PolicyArn
+		}
 	}
 
-	assert.Subset(s.T(), actualManagedPolicies, expectedManagedPolicies)
+	assert.Contains(s.T(), actualManagedPolicies, "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole")
+	assert.NotEmpty(s.T(), customPolicyArn, "Expected to find custom policy from policy_statements")
 
-	// List inline policies to find the custom policy created from policy_statements
-	inlinePolicies, err := client.ListRolePolicies(context.Background(), &iam.ListRolePoliciesInput{
-		RoleName: &name,
-	})
-	assert.NoError(s.T(), err)
-
-	// There should be at least one inline policy (from policy_statements)
-	assert.GreaterOrEqual(s.T(), len(inlinePolicies.PolicyNames), 1, "Expected at least one inline policy from policy_statements")
-
-	// Get the inline policy document and verify its contents
-	if len(inlinePolicies.PolicyNames) > 0 {
-		inlinePolicyName := inlinePolicies.PolicyNames[0]
-		policyOutput, err := client.GetRolePolicy(context.Background(), &iam.GetRolePolicyInput{
-			RoleName:   &name,
-			PolicyName: &inlinePolicyName,
+	// Get the custom policy document and verify its contents
+	if customPolicyArn != "" {
+		policyOutput, err := client.GetPolicy(context.Background(), &iam.GetPolicyInput{
+			PolicyArn: &customPolicyArn,
 		})
 		assert.NoError(s.T(), err)
 
-		policyDocument, err := url.QueryUnescape(*policyOutput.PolicyDocument)
+		// Get the default version of the policy
+		policyVersionOutput, err := client.GetPolicyVersion(context.Background(), &iam.GetPolicyVersionInput{
+			PolicyArn: &customPolicyArn,
+			VersionId: policyOutput.Policy.DefaultVersionId,
+		})
+		assert.NoError(s.T(), err)
+
+		policyDocument, err := url.QueryUnescape(*policyVersionOutput.PolicyVersion.Document)
 		assert.NoError(s.T(), err)
 
 		// Parse the policy document
