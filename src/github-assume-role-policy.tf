@@ -82,6 +82,6 @@ data "aws_iam_policy_document" "github_oidc_provider_assume" {
 }
 
 output "github_assume_role_policy" {
-  value       = one(data.aws_iam_policy_document.github_oidc_provider_assume[*].json)
+  value       = local.github_oidc_enabled ? one(data.aws_iam_policy_document.github_oidc_provider_assume[*].json) : null
   description = "JSON encoded string representing the \"Assume Role\" policy configured by the inputs"
 }
