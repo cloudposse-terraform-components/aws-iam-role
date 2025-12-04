@@ -3,3 +3,5 @@ import:
   - catalog/usecase/basic
   - catalog/usecase/disabled
   - catalog/usecase/assume_role_policy
+  - catalog/usecase/github_oidc
+  - catalog/usecase/policy_statements
