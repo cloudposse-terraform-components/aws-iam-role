@@ -24,10 +24,24 @@ variable "policy_documents" {
   default     = []
 }
 
-variable "policy_document_count" {
-  type        = number
-  description = "Number of policy documents (length of policy_documents list)"
-  default     = 1
+variable "policy_statements" {
+  type = map(object({
+    effect        = string
+    actions       = optional(list(string))
+    not_actions   = optional(list(string))
+    resources     = optional(any)
+    not_resources = optional(any)
+    principal     = optional(any)
+    not_principal = optional(any)
+    condition     = optional(any)
+  }))
+  description = <<-EOT
+    Map of IAM policy statements (YAML-friendly structure) where the key is the statement ID (sid).
+    All statements will be combined into a single policy document with version "2012-10-17".
+    This policy document will be merged with policy_documents.
+    Each statement must have 'effect' and either 'actions' or 'not_actions'.
+    EOT
+  default     = {}
 }
 
 variable "managed_policy_arns" {

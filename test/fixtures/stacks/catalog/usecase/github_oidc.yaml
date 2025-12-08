@@ -1,0 +1,29 @@
+components:
+  terraform:
+    iam-role/github-oidc:
+      metadata:
+        component: target
+      vars:
+        name: github-oidc-role
+        use_fullname: true
+        role_description: |
+          Role for GitHub Actions to deploy infrastructure via OIDC.
+        # Enable GitHub OIDC
+        github_oidc_provider_enabled: true
+        # This will be overridden in the test with the actual provider ARN
+        github_oidc_provider_arn: "arn:aws:iam::799847381734:oidc-provider/token.actions.githubusercontent.com"
+        trusted_github_org: "cloudposse"
+        trusted_github_repos:
+          - "test-repo"
+          - "cloudposse/infrastructure:main"
+          - "other-org/other-repo:ref:refs/heads/release/*"
+          - "env-repo:environment:production"
+        # Attach a managed policy for the role
+        policy_document_count: 0
+        managed_policy_arns:
+          - arn:aws:iam::aws:policy/ReadOnlyAccess
+        max_session_duration: 3600
+        policy_name: github-oidc-policy
+        policy_description: "IAM policy for GitHub OIDC role"
+        instance_profile_enabled: false
+        path: "/"

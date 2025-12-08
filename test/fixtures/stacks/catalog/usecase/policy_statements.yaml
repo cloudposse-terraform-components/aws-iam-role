@@ -1,0 +1,48 @@
+components:
+  terraform:
+    iam-role/policy-statements:
+      metadata:
+        component: target
+      vars:
+        name: policy-statements-role
+        use_fullname: true
+        role_description: |
+          Role for testing YAML-friendly policy_statements variable.
+        principals:
+          Service:
+            - lambda.amazonaws.com
+        # Use policy_statements instead of policy_documents
+        # This tests the YAML-friendly policy definition feature
+        # Note: Conditions are tested separately - this focuses on basic policy_statements
+        policy_statements:
+          AllowS3Read:
+            effect: Allow
+            actions:
+              - "s3:GetObject"
+              - "s3:ListBucket"
+            resources:
+              - "arn:aws:s3:::test-bucket"
+              - "arn:aws:s3:::test-bucket/*"
+          AllowDynamoDBAccess:
+            effect: Allow
+            actions:
+              - "dynamodb:GetItem"
+              - "dynamodb:PutItem"
+              - "dynamodb:Query"
+            resources:
+              - "arn:aws:dynamodb:*:*:table/test-table"
+          DenyDeleteOperations:
+            effect: Deny
+            actions:
+              - "s3:DeleteObject"
+              - "dynamodb:DeleteItem"
+            resources:
+              - "*"
+        # Do not set policy_document_count - let the component auto-calculate
+        managed_policy_arns:
+          - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        max_session_duration: 3600
+        policy_name: policy-statements-test
+        policy_description: "IAM policy testing policy_statements variable"
+        instance_profile_enabled: false
+        path: "/"
