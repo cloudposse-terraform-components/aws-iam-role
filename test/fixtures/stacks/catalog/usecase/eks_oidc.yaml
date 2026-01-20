@@ -1,0 +1,28 @@
+components:
+  terraform:
+    iam-role/eks-oidc:
+      metadata:
+        component: target
+      vars:
+        name: eks-oidc-role
+        use_fullname: true
+        role_description: |
+          IRSA role for Kubernetes service accounts to access AWS resources.
+        # Enable EKS OIDC (IRSA)
+        eks_oidc_provider_enabled: true
+        # This will be overridden in the test with the actual provider ARN
+        eks_oidc_provider_arn: "arn:aws:iam::799847381734:oidc-provider/oidc.eks.us-east-2.amazonaws.com/id/EXAMPLED539D4633E53DE1B71EXAMPLE"
+        # Optional: explicitly set the issuer URL (derived from ARN by default)
+        # eks_oidc_issuer_url: "oidc.eks.us-east-2.amazonaws.com/id/EXAMPLED539D4633E53DE1B71EXAMPLE"
+        # Service account configuration
+        service_account_namespace: my-namespace
+        service_account_name: my-service-account
+        # Attach a managed policy for the role
+        policy_document_count: 0
+        managed_policy_arns:
+          - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+        max_session_duration: 3600
+        policy_name: eks-oidc-policy
+        policy_description: "IAM policy for EKS IRSA role"
+        instance_profile_enabled: false
+        path: "/"

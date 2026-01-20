@@ -41,12 +41,13 @@ locals {
 }
 
 data "aws_iam_policy_document" "assume_role_policy" {
-  count = local.enabled && (var.assume_role_policy != null || local.github_oidc_enabled) ? 1 : 0
+  count = local.enabled && (var.assume_role_policy != null || local.github_oidc_enabled || local.eks_oidc_enabled) ? 1 : 0
 
-  # Merge assume_role_policy with GitHub OIDC policy if both exist
+  # Merge assume_role_policy with GitHub OIDC and EKS OIDC policies if they exist
   source_policy_documents = compact([
     var.assume_role_policy,
-    try(one(data.aws_iam_policy_document.github_oidc_provider_assume[*].json), null)
+    try(one(data.aws_iam_policy_document.github_oidc_provider_assume[*].json), null),
+    try(one(data.aws_iam_policy_document.eks_oidc_provider_assume[*].json), null)
   ])
 }
 
@@ -54,7 +55,7 @@ module "role" {
   source  = "cloudposse/iam-role/aws"
   version = "0.22.0"
 
-  assume_role_policy       = var.assume_role_policy != null || local.github_oidc_enabled ? one(data.aws_iam_policy_document.assume_role_policy[*].json) : null
+  assume_role_policy       = var.assume_role_policy != null || local.github_oidc_enabled || local.eks_oidc_enabled ? one(data.aws_iam_policy_document.assume_role_policy[*].json) : null
   assume_role_actions      = var.assume_role_actions
   assume_role_conditions   = var.assume_role_conditions
   instance_profile_enabled = var.instance_profile_enabled
