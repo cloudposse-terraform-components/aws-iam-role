@@ -16,7 +16,7 @@ variable "eks_oidc_provider_arn" {
   default     = ""
 
   validation {
-    condition     = !local.eks_oidc_enabled || var.eks_oidc_provider_arn != ""
+    condition     = !var.eks_oidc_provider_enabled || var.eks_oidc_provider_arn != ""
     error_message = "eks_oidc_provider_arn must be set if EKS OIDC provider is enabled"
   }
 }
@@ -54,8 +54,9 @@ locals {
   eks_oidc_enabled = local.enabled && var.eks_oidc_provider_enabled
 
   # Default service account namespace and name to the component name if not specified
-  service_account_namespace = coalesce(var.service_account_namespace, module.this.name)
-  service_account_name      = coalesce(var.service_account_name, module.this.name)
+  # Use try() to handle the case when module.this.name is empty (e.g., when enabled=false)
+  service_account_namespace = local.eks_oidc_enabled ? coalesce(var.service_account_namespace, module.this.name) : ""
+  service_account_name      = local.eks_oidc_enabled ? coalesce(var.service_account_name, module.this.name) : ""
 
   # Extract OIDC issuer URL from ARN if not explicitly provided
   # ARN format: arn:aws:iam::<account-id>:oidc-provider/<issuer-url>
