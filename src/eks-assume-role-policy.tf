@@ -53,8 +53,9 @@ variable "service_account_namespace" {
 locals {
   eks_oidc_enabled = local.enabled && var.eks_oidc_provider_enabled
 
-  # Default service account namespace and name to the component name if not specified
-  # Use try() to handle the case when module.this.name is empty (e.g., when enabled=false)
+  # Default service account namespace and name to module.this.name if not specified.
+  # Only evaluated when eks_oidc_enabled is true, which guarantees module.this.name is non-empty.
+  # coalesce() returns the first non-null, non-empty argument.
   service_account_namespace = local.eks_oidc_enabled ? coalesce(var.service_account_namespace, module.this.name) : ""
   service_account_name      = local.eks_oidc_enabled ? coalesce(var.service_account_name, module.this.name) : ""
 
