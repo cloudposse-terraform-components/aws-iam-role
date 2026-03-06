@@ -53,7 +53,7 @@ data "aws_iam_policy_document" "assume_role_policy" {
 
 module "role" {
   source  = "cloudposse/iam-role/aws"
-  version = "0.22.0"
+  version = "0.23.0"
 
   assume_role_policy       = var.assume_role_policy != null || local.github_oidc_enabled || local.eks_oidc_enabled ? one(data.aws_iam_policy_document.assume_role_policy[*].json) : null
   assume_role_actions      = var.assume_role_actions
