@@ -31,6 +31,19 @@ variable "eks_oidc_issuer_url" {
   default     = ""
 }
 
+variable "eks_oidc_audience" {
+  type        = list(string)
+  description = <<-EOT
+    The expected `aud` (audience) claims on OIDC tokens presented when assuming this role.
+    Defaults to `["sts.amazonaws.com"]`, which is what AWS-managed EKS clusters use for IRSA.
+    Foreign OIDC providers (third-party SaaS vendors whose EKS cluster federates into
+    this account) may mint tokens with a different, vendor-specific audience — set this
+    to match the `aud` claim(s) they issue. A list is accepted to support trust policies
+    that need to accept tokens from multiple audiences (e.g., during an audience migration).
+    EOT
+  default     = ["sts.amazonaws.com"]
+}
+
 variable "service_account_name" {
   type        = string
   description = <<-EOT
@@ -86,11 +99,12 @@ data "aws_iam_policy_document" "eks_oidc_provider_assume" {
       identifiers = [var.eks_oidc_provider_arn]
     }
 
-    # Verify the audience is AWS STS
+    # Verify the audience claim matches what the OIDC provider issues
+    # (defaults to `sts.amazonaws.com` for AWS-managed EKS / IRSA)
     condition {
       test     = "StringEquals"
       variable = "${local.eks_oidc_issuer_url}:aud"
-      values   = ["sts.amazonaws.com"]
+      values   = var.eks_oidc_audience
     }
 
     # Restrict to specific namespace and service account
