@@ -33,13 +33,16 @@ variable "policy_statements" {
     not_resources = optional(any)
     principal     = optional(any)
     not_principal = optional(any)
-    condition     = optional(any)
+    condition     = optional(map(map(list(string))))
   }))
   description = <<-EOT
     Map of IAM policy statements (YAML-friendly structure) where the key is the statement ID (sid).
     All statements will be combined into a single policy document with version "2012-10-17".
     This policy document will be merged with policy_documents.
     Each statement must have 'effect' and either 'actions' or 'not_actions'.
+    'condition' maps operator -> condition key -> list of values, e.g.
+    condition = { StringEquals = { "iam:PassedToService" = ["ec2.amazonaws.com"] } }.
+    Single condition values must be written as one-element lists.
     EOT
   default     = {}
 }
